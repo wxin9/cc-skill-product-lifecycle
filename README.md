@@ -77,9 +77,9 @@ Claude Code will automatically:
 
 > The following sections describe how to use the scripts manually. For most users, the Claude Code conversation approach above is sufficient.
 
-## Quick Start
+### Quick Start
 
-### 1. Initialize a New Project
+#### 1. Initialize a New Project
 
 ```bash
 # Create a new project
@@ -89,7 +89,7 @@ mkdir my-product && cd my-product
 python -m scripts init --name "My Product"
 ```
 
-### 2. Write Your PRD
+#### 2. Write Your PRD
 
 ```bash
 # Copy the PRD template
@@ -102,7 +102,7 @@ edit Docs/product/PRD.md
 python -m scripts validate --doc Docs/product/PRD.md --type prd
 ```
 
-### 3. Create Technical Architecture
+#### 3. Create Technical Architecture
 
 ```bash
 # Copy the architecture template
@@ -115,7 +115,7 @@ edit Docs/tech/ARCH.md
 python -m scripts validate --doc Docs/tech/ARCH.md --type arch
 ```
 
-### 4. Generate Test Outline
+#### 4. Generate Test Outline
 
 ```bash
 # Generate master test outline from PRD and ARCH
@@ -125,7 +125,7 @@ python -m scripts outline generate \
   --output Docs/tests/MASTER_OUTLINE.md
 ```
 
-### 5. Plan Iterations
+#### 5. Plan Iterations
 
 ```bash
 # Generate iteration plans
@@ -134,7 +134,7 @@ python -m scripts plan \
   --arch Docs/tech/ARCH.md
 ```
 
-### 6. Execute an Iteration
+#### 6. Execute an Iteration
 
 ```bash
 # Create tasks for iteration 1
@@ -149,14 +149,14 @@ python -m scripts test-record --iteration 1 --test-id TST-F01-S01 --status pass
 python -m scripts gate --iteration 1
 ```
 
-## Documentation
+### Documentation
 
 - [SKILL.md](SKILL.md) - Complete skill documentation (Chinese)
 - [PRD Template](references/doc_templates/prd_template.md) - Product Requirements Document template
 - [Architecture Template](references/doc_templates/arch_template.md) - Technical Architecture document template (Arc42-Lite)
 - [Test Outline Template](references/doc_templates/test_outline_template.md) - Master Test Outline template (IEEE 829)
 
-## Command Reference
+### Command Reference
 
 ```bash
 python -m scripts init              # Initialize project structure
