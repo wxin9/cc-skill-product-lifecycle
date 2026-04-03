@@ -77,9 +77,9 @@ Claude Code 会自动：
 
 > 以下章节介绍如何手动使用脚本。对大多数用户来说，上述 Claude Code 对话方式已经足够。
 
-## 快速开始
+### 快速开始
 
-### 1. 初始化新项目
+#### 1. 初始化新项目
 
 ```bash
 # 创建新项目
@@ -89,7 +89,7 @@ mkdir my-product && cd my-product
 python -m scripts init --name "我的产品"
 ```
 
-### 2. 编写 PRD
+#### 2. 编写 PRD
 
 ```bash
 # 复制 PRD 模板
@@ -102,7 +102,7 @@ edit Docs/product/PRD.md
 python -m scripts validate --doc Docs/product/PRD.md --type prd
 ```
 
-### 3. 创建技术架构
+#### 3. 创建技术架构
 
 ```bash
 # 复制架构模板
@@ -115,7 +115,7 @@ edit Docs/tech/ARCH.md
 python -m scripts validate --doc Docs/tech/ARCH.md --type arch
 ```
 
-### 4. 生成测试大纲
+#### 4. 生成测试大纲
 
 ```bash
 # 从 PRD 和 ARCH 生成主测试大纲
@@ -125,7 +125,7 @@ python -m scripts outline generate \
   --output Docs/tests/MASTER_OUTLINE.md
 ```
 
-### 5. 规划迭代
+#### 5. 规划迭代
 
 ```bash
 # 生成迭代计划
@@ -134,7 +134,7 @@ python -m scripts plan \
   --arch Docs/tech/ARCH.md
 ```
 
-### 6. 执行迭代
+#### 6. 执行迭代
 
 ```bash
 # 为迭代 1 创建任务
@@ -149,14 +149,14 @@ python -m scripts test-record --iteration 1 --test-id TST-F01-S01 --status pass
 python -m scripts gate --iteration 1
 ```
 
-## 文档
+### 文档
 
 - [SKILL.md](SKILL.md) - 完整技能文档（中文）
 - [PRD 模板](references/doc_templates/prd_template.md) - 产品需求文档模板
 - [架构模板](references/doc_templates/arch_template.md) - 技术架构文档模板（Arc42-Lite）
 - [测试大纲模板](references/doc_templates/test_outline_template.md) - 主测试大纲模板（IEEE 829）
 
-## 命令参考
+### 命令参考
 
 ```bash
 python -m scripts init              # 初始化项目结构
