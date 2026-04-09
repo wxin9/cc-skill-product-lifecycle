@@ -212,7 +212,7 @@ python -m scripts change test --test-id TST-F01-S01 --failure-type bug
 ```
 Docs/
 ├── INDEX.md                       # 总索引
-├─��� product/                       # PRD.md, requirements/
+├── product/                       # PRD.md, requirements/
 ├── tech/                          # ARCH.md, components/
 ├── adr/                           # ADR-001-xxx.md + INDEX.md
 ├── iterations/                    # iter-N/PLAN.md + test_cases.md + sprint_review.md
