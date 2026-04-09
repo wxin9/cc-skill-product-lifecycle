@@ -53,8 +53,9 @@ jobs:
         run: |
           python -c "
           import json, sys
-          data = json.load(open('evals/evals.json'))
-          assert isinstance(data, list), 'evals.json must be a list'
+          raw = json.load(open('evals/evals.json'))
+          data = raw.get('evals', raw) if isinstance(raw, dict) else raw
+          assert isinstance(data, list), 'evals must be a list'
           for i, e in enumerate(data):
               assert 'prompt' in e, f'eval {i} missing prompt'
           print(f'✓ {len(data)} evals validated')

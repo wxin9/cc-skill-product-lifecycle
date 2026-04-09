@@ -42,7 +42,7 @@
         "Sprint Review 自动生成",
         "提示记录实际工时"
       ],
-      "notes": "验证 Pro 版门控增强（DoD + velocity + sprint_review）"
+      "notes": "验证门控增强能力（DoD + velocity + sprint_review）"
     },
     {
       "id": "eval-04",
