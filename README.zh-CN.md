@@ -11,19 +11,19 @@
 ## ⚠ 破坏性变更 (v2.0)
 
 **所有旧命令已移除**：
-- ❌ \`./lifecycle init\` → **已移除**
-- ❌ \`./lifecycle validate\` → **已移除**
-- ❌ \`./lifecycle draft\` → **已移除**
-- ❌ \`./lifecycle plan\` → **已移除**
+- ❌ `./lifecycle init` → **已移除**
+- ❌ `./lifecycle validate` → **已移除**
+- ❌ `./lifecycle draft` → **已移除**
+- ❌ `./lifecycle plan` → **已移除**
 - ❌ 所有其他旧命令 → **已移除**
 
 **新命令**：
-- ✅ \`./orchestrator run --intent <intent> --user-input "<输入>"\` — 启动编排
-- ✅ \`./orchestrator resume --from-phase <phase-id>\` — 从暂停状态恢复
-- ✅ \`./orchestrator status\` — 显示状态
-- ✅ \`./orchestrator cancel\` — 取消工作流
+- ✅ `./orchestrator run --intent <intent> --user-input "<输入>"` — 启动编排
+- ✅ `./orchestrator resume --from-phase <phase-id>` — 从暂停状态恢复
+- ✅ `./orchestrator status` — 显示状态
+- ✅ `./orchestrator cancel` — 取消工作流
 
-**迁移**：Orchestrator 会自动迁移旧的 \`steps/\` 格式到 \`checkpoint.json\`。参见下方的迁移指南。
+**迁移**：Orchestrator 会自动迁移旧的 `steps/` 格式到 `checkpoint.json`。参见下方的[迁移指南](#迁移指南从-v10)。
 
 ## 🎯 核心价值
 
@@ -39,50 +39,74 @@
 - ✅ **失败恢复**：验证/DoD 失败暂停工作流，模型修复后恢复
 - ✅ **状态持久化**：Checkpoint 记录 Phase 级别状态，支持从断点恢复
 
-## ⭐ v2.0.0 新特性
+## ⭐ 新特性
 
-### 1. Orchestrator 引擎
+### v2.0.1 — Checkpoint 跟踪改进
+
+- **Intent 始终记录**：Intent 和 user_input 现在每次运行时都会更新（不再仅限初始化）
+- **Resume 修复**：`get_phases_by_intent("resume")` 正确返回所有 Phase
+- **自动 PRD 快照**：SnapshotManager 集成到 validate 命令 — 验证后自动创建快照
+- **Phase 序列修复**：Phase 10 depends_on 已修正；prd-change 现在包含 Phase 7-8
+
+### v2.0.0 — Orchestrator 架构
+
+#### 1. Orchestrator 引擎
 - **脚本编排工作流**：根据意图自动执行 Phase 序列
 - **状态机**：Phase 级别状态转换，依赖检查
 - **无需模型记忆**：Orchestrator 处理整个工作流，模型只需响应通知
 
-### 2. 交互暂停
+#### 2. 交互暂停
 - **自动暂停**：Orchestrator 在用户审核/访谈节点暂停
-- **双重通知**：stdout + \`.lifecycle/notification.json\`
-- **恢复支持**：模型修复问题后调用 \`resume\` 继续
+- **双重通知**：stdout + `.lifecycle/notification.json`
+- **恢复支持**：模型修复问题后调用 `resume` 继续
 
-### 3. 失败恢复
+#### 3. 失败恢复
 - **验证失败**：Orchestrator 暂停，模型修复后重试
 - **DoD 失败**：Orchestrator 暂停，模型解决后继续
 - **重试策略**：每个 Phase 可配置重试次数
 
-### 4. Checkpoint 管理器
+#### 4. Checkpoint 管理器
 - **Phase 级别状态**：记录已完成 Phase、当前 Phase、Phase 数据
-- **自动迁移**：迁移旧版 \`steps/\` 格式到 \`checkpoint.json\`
+- **自动迁移**：迁移旧版 `steps/` 格式到 `checkpoint.json`
 - **断点恢复**：加载 checkpoint 从暂停 Phase 继续
+- **内存缓存**：带延迟写入的内存缓存 — 25 倍 I/O 减少
+- **线程安全**：基于 RLock 的并发控制
 
-### 5. 意图解析器
+#### 5. 意图解析器
 - **正则匹配**：基于模式的意图识别
 - **优先级排序**：Bug-fix (1) > PRD-change (3) > New-product (9)
 - **复合意图**：按顺序处理多个意图
+
+#### 6. 并行执行
+- **ParallelExecutor**：使用 Kahn 算法进行拓扑排序的依赖图分析
+- **并行分组**：独立的 Phase 并发执行（通过 `ORCHESTRATOR_PARALLEL=1` 启用）
+
+#### 7. 条件分支
+- **ConditionEvaluator**：安全地评估条件表达式，支持动态执行路径
+- **支持的运算符**：比较（`==`、`!=`、`<`、`>`、`<=`、`>=`）、逻辑（`and`、`or`、`not`）、成员（`in`、`not in`）
+
+#### 8. 回滚机制
+- **文件快照**：每个 Phase 执行前自动创建 `Docs/` 和 `.lifecycle/` 的快照
+- **回滚到任意节点**：恢复 checkpoint 状态和文件到任意历史回滚点
+- **回滚 CLI**：`./orchestrator rollback --id <rollback-id>`
 
 ## 🚀 快速开始
 
 ### 安装
 
-\`\`\`bash
+```bash
 # 克隆仓库
 git clone https://github.com/wxin9/cc-skill-product-lifecycle.git
 
 # 安装为 Claude Code 技能
 cp -r cc-skill-product-lifecycle ~/.claude/skills/product-lifecycle
-\`\`\`
+```
 
 ### 使用（Orchestrator 命令）
 
 安装后，使用 orchestrator 命令：
 
-\`\`\`bash
+```bash
 # 启动新产品工作流
 ./orchestrator run --intent new-product --user-input "我想做一个任务管理工具"
 
@@ -92,11 +116,11 @@ cp -r cc-skill-product-lifecycle ~/.claude/skills/product-lifecycle
 # 3. 模型生成 PRD 草案
 # 4. 恢复：./orchestrator resume --from-phase phase-2-draft-prd
 # 5. 继续 Phase 3-9...
-\`\`\`
+```
 
 **示例对话**：
 
-\`\`\`
+```
 你："我想做一个任务管理工具"
 Claude: [调用 ./orchestrator run --intent new-product]
         [Orchestrator 在 Phase 2 暂停]
@@ -107,26 +131,33 @@ Claude: [调用 ./orchestrator run --intent new-product]
 你："需求变了，要加支付功能"
 Claude: [调用 ./orchestrator run --intent prd-change]
         [Orchestrator 执行 Phase 10 → Phase 2 → Phase 3...]
-\`\`\`
+
+你："登录流程发现 bug"
+Claude: [调用 ./orchestrator run --intent bug-fix]
+        [Orchestrator 执行 Phase 10 故障处理 → 暂停等待修复]
+```
 
 ## 💡 核心功能
 
 | 功能 | 说明 |
 |------|------|
 | **AI 协作起草** | Claude 主动起草 PRD/架构，你做审稿人 |
-| **脚本强制门控** | \`sys.exit(1)\` 物理阻断，无法跳步 |
+| **脚本强制门控** | `sys.exit(1)` 物理阻断，无法跳步 |
 | **复合意图识别** | "修了 bug 顺便调整需求" — 识别多个意图，排序执行 |
-| **项目类型自动识别** | 5 种类型，测试维度自适应 |
+| **项目类型自动识别** | 5 种类型（Web/CLI/Mobile/Data/Microservices），测试维度自适应 |
 | **自动快照 & Diff** | 验证通过自动快照，变更时自动对比 |
 | **Velocity 追踪** | 估算 vs 实际工时 + ASCII 趋势图 |
 | **DoD 门控扩展** | lint/覆盖率/代码审查，warn 或 fail |
 | **ADR 管理** | 架构决策记录全生命周期管理 |
 | **风险登记册** | 概率×影响矩阵自动评级 |
 | **Sprint Review** | 门控通过自动生成评审材料 |
+| **并行执行** | 独立 Phase 通过拓扑排序并发运行 |
+| **条件分支** | 基于项目类型/条件的动态执行路径 |
+| **回滚** | 恢复到任意历史 checkpoint，含文件快照还原 |
 
 ## 📖 工作流程
 
-\`\`\`
+```
 Phase 0: 意图识别
    ↓
 Phase 1: 项目初始化 → DoD/Risk/ADR 初始化
@@ -148,11 +179,24 @@ Phase 8: 规划迭代 → Velocity 估算
 Phase 9: 执行迭代 → 4 层门控验证
    ↓
 Phase 10: 处理变更 → 图谱遍历级联更新
-\`\`\`
+```
 
-## 🛠️ 常用命令
+### 变更意图路径
 
-\`\`\`bash
+| 意图 | Phase 序列 |
+|------|-----------|
+| `new-product` | Phase 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 |
+| `prd-change` | Phase 10 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 |
+| `arch-change` | Phase 10 → 5 → 6 → 7 → 8 → 9 |
+| `bug-fix` | Phase 10 → 暂停等待修复 |
+| `new-iteration` | Phase 8 → 9 |
+| `resume` | 从 checkpoint 继续 |
+
+## 🛠️ 命令
+
+### Orchestrator 命令
+
+```bash
 # 启动编排
 ./orchestrator run --intent new-product --user-input "我想做一个产品"
 
@@ -164,18 +208,22 @@ Phase 10: 处理变更 → 图谱遍历级联更新
 
 # 取消工作流
 ./orchestrator cancel
-\`\`\`
 
-**旧命令（v2.0 已移除）**：
-- ~~\`python -m scripts init\`~~ → 使用 \`./orchestrator run --intent new-product\`
-- ~~\`python -m scripts validate\`~~ → Orchestrator 自动验证
-- ~~\`python -m scripts draft\`~~ → Orchestrator 自动起草
-- ~~\`python -m scripts plan\`~~ → Orchestrator 自动规划
+# 并行执行（可选启用）
+ORCHESTRATOR_PARALLEL=1 ./orchestrator run --intent new-product --user-input "..."
+```
+
+### 旧命令（v2.0 已移除）
+
+- ~~`python -m scripts init`~~ → 使用 `./orchestrator run --intent new-product`
+- ~~`python -m scripts validate`~~ → Orchestrator 自动验证
+- ~~`python -m scripts draft`~~ → Orchestrator 自动起草
+- ~~`python -m scripts plan`~~ → Orchestrator 自动规划
 - ~~所有其他旧命令~~ → 使用 orchestrator 命令
 
 ## 📊 生成的项目结构
 
-\`\`\`
+```
 Docs/
 ├── product/PRD.md          # PRD 文档
 ├── tech/ARCH.md            # 架构文档
@@ -183,13 +231,15 @@ Docs/
 └── iterations/iter-N/      # 迭代计划 + 测试记录 + Sprint Review
 
 .lifecycle/
-├── test_graph.json         # 测试知识图谱 ⭐ v1.1.0
+├── checkpoint.json         # Phase 级别状态 (v2.0+)
+├── notification.json       # 暂停/失败通知 (v2.0+)
+├── test_graph.json         # 测试知识图谱
 ├── config.json             # 项目配置
 ├── dod.json                # DoD 规则
 ├── risk_register.json      # 风险登记册
 ├── velocity.json           # Velocity 追踪
-└── snapshots/              # 文档快照
-\`\`\`
+└── snapshots/              # 文档快照 + 回滚点
+```
 
 ## 🎓 模型兼容性
 
@@ -201,37 +251,37 @@ Docs/
 
 ### 步骤 1：备份现有项目
 
-\`\`\`bash
+```bash
 cp -r myproject myproject_backup
-\`\`\`
+```
 
 ### 步骤 2：更新技能
 
-\`\`\`bash
+```bash
 cd ~/.claude/skills/product-lifecycle
 git pull origin main
 # 或从 GitHub 重新下载
-\`\`\`
+```
 
 ### 步骤 3：运行迁移
 
-Orchestrator 会自动迁移旧版 \`steps/\` 格式到 \`checkpoint.json\`：
+Orchestrator 会自动迁移旧版 `steps/` 格式到 `checkpoint.json`：
 
-\`\`\`bash
+```bash
 ./orchestrator status
 # 输出：
 # ⚠ 正在从旧版 steps/ 格式迁移...
 # ✓ 从旧版格式迁移了 5 个 Phase
-\`\`\`
+```
 
 ### 步骤 4：验证迁移
 
-\`\`\`bash
+```bash
 ./orchestrator status
 # 应显示：
 # 状态：migrated
 # 已完成 Phase：[phase-1-init, phase-3-validate-prd, ...]
-\`\`\`
+```
 
 ### 步骤 5：使用新命令
 
@@ -239,28 +289,28 @@ Orchestrator 会自动迁移旧版 \`steps/\` 格式到 \`checkpoint.json\`：
 
 | 旧命令 | 新命令 |
 |--------|--------|
-| \`./lifecycle init\` | \`./orchestrator run --intent new-product\` |
-| \`./lifecycle validate\` | Orchestrator 自动验证 |
-| \`./lifecycle draft prd\` | Orchestrator 在 Phase 2 自动起草 |
-| \`./lifecycle plan\` | Orchestrator 在 Phase 8 自动规划 |
-| \`./lifecycle gate --iteration 1\` | Orchestrator 在 Phase 9 自动门控 |
-| \`./lifecycle change prd\` | \`./orchestrator run --intent prd-change\` |
+| `./lifecycle init` | `./orchestrator run --intent new-product` |
+| `./lifecycle validate` | Orchestrator 自动验证 |
+| `./lifecycle draft prd` | Orchestrator 在 Phase 2 自动起草 |
+| `./lifecycle plan` | Orchestrator 在 Phase 8 自动规划 |
+| `./lifecycle gate --iteration 1` | Orchestrator 在 Phase 9 自动门控 |
+| `./lifecycle change prd` | `./orchestrator run --intent prd-change` |
 
 ### 故障排除
 
 **问题**：迁移失败
 
 **解决方案**：
-1. 检查 \`.lifecycle/steps/\` 目录是否存在
+1. 检查 `.lifecycle/steps/` 目录是否存在
 2. 检查步骤文件是否为有效 JSON
-3. 手动删除 \`.lifecycle/checkpoint.json\` 并重新运行 \`./orchestrator status\`
+3. 手动删除 `.lifecycle/checkpoint.json` 并重新运行 `./orchestrator status`
 
 **问题**：恢复不工作
 
 **解决方案**：
-1. 检查 \`.lifecycle/checkpoint.json\` 是否存在
-2. 检查 \`current_phase\` 字段是否设置
-3. 检查 \`.lifecycle/notification.json\` 是否存在
+1. 检查 `.lifecycle/checkpoint.json` 是否存在
+2. 检查 `current_phase` 字段是否设置
+3. 检查 `.lifecycle/notification.json` 是否存在
 
 ## 📄 许可证
 
@@ -270,11 +320,11 @@ Apache License 2.0 — 见 [LICENSE](LICENSE)
 
 商业使用请在产品文档中注明出处：
 
-\`\`\`
+```
 本产品使用 Product-Lifecycle Skill (https://github.com/wxin9/cc-skill-product-lifecycle)
 Copyright 2026 Kaiser (wxin966@gmail.com)
 Apache License 2.0
-\`\`\`
+```
 
 ---
 

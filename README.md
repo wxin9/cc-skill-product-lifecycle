@@ -39,32 +39,56 @@
 - ✅ **Failure recovery**: Validation/DoD failure pauses workflow, model fixes and resumes
 - ✅ **State persistence**: Checkpoint records phase-level state, supports resume from breakpoint
 
-## ⭐ v2.0.0 New Features
+## ⭐ What's New
 
-### 1. Orchestrator Engine
+### v2.0.1 — Checkpoint Tracking Improvements
+
+- **Intent always recorded**: Intent and user_input now update on every run (not just initial)
+- **Resume fixed**: `get_phases_by_intent("resume")` returns all phases correctly
+- **Auto PRD snapshots**: SnapshotManager integrated into validate command — snapshots created automatically after validation
+- **Phase sequence fixes**: Phase 10 depends_on corrected; prd-change now includes Phase 7-8
+
+### v2.0.0 — Orchestrator Architecture
+
+#### 1. Orchestrator Engine
 - **Script-orchestrated workflow**: Auto-executes phase sequences based on intent
 - **State machine**: Phase-level state transitions with dependency checking
 - **No model memory needed**: Orchestrator handles entire workflow, model just responds to notifications
 
-### 2. Interaction Pauses
+#### 2. Interaction Pauses
 - **Automatic pause**: Orchestrator pauses at user review/interview nodes
 - **Dual notification**: stdout + `.lifecycle/notification.json`
 - **Resume support**: Model fixes issues and calls `resume` to continue
 
-### 3. Failure Recovery
+#### 3. Failure Recovery
 - **Validation failure**: Orchestrator pauses, model fixes and retries
 - **DoD failure**: Orchestrator pauses, model resolves and continues
 - **Retry strategy**: Configurable retry count per phase
 
-### 4. Checkpoint Manager
+#### 4. Checkpoint Manager
 - **Phase-level state**: Records completed phases, current phase, phase data
 - **Auto-migration**: Migrates legacy `steps/` format to `checkpoint.json`
 - **Resume from breakpoint**: Load checkpoint and continue from paused phase
+- **Memory caching**: In-memory cache with delayed writing — 25x I/O reduction
+- **Thread-safe**: RLock-based concurrency control
 
-### 5. Intent Resolver
+#### 5. Intent Resolver
 - **Regex matching**: Pattern-based intent recognition
 - **Priority ranking**: Bug-fix (1) > PRD-change (3) > New-product (9)
 - **Compound intent**: Handles multiple intents in sequence
+
+#### 6. Parallel Execution
+- **ParallelExecutor**: Topological sort using Kahn's algorithm for dependency graph analysis
+- **Parallel groups**: Independent phases execute concurrently (enable via `ORCHESTRATOR_PARALLEL=1`)
+
+#### 7. Conditional Branching
+- **ConditionEvaluator**: Safely evaluates condition expressions for dynamic execution paths
+- **Supported operators**: Comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`), logical (`and`, `or`, `not`), membership (`in`, `not in`)
+
+#### 8. Rollback Mechanism
+- **File snapshots**: Auto-creates snapshots of `Docs/` and `.lifecycle/` before each phase
+- **Rollback to any point**: Restore checkpoint state and files to any previous rollback point
+- **Rollback CLI**: `./orchestrator rollback --id <rollback-id>`
 
 ## 🚀 Quick Start
 
@@ -84,7 +108,7 @@ After installation, use orchestrator commands:
 
 ```bash
 # Start new product workflow
-./orchestrator run --intent new-product --user-input "我想做一个任务管理工具"
+./orchestrator run --intent new-product --user-input "I want to build a task manager"
 
 # Orchestrator will:
 # 1. Execute Phase 1 (auto) — Create doc structure
@@ -97,16 +121,20 @@ After installation, use orchestrator commands:
 **Example Conversation**:
 
 ```
-You: "我想做一个任务管理工具"
+You: "I want to build a task manager"
 Claude: [Calls ./orchestrator run --intent new-product]
         [Orchestrator pauses at Phase 2]
         [Notification: "Waiting for PRD review"]
         [Claude generates PRD draft]
         [Calls ./orchestrator resume]
 
-You: "需求变了，要加支付功能"
+You: "Requirements changed, need to add payment"
 Claude: [Calls ./orchestrator run --intent prd-change]
         [Orchestrator executes Phase 10 → Phase 2 → Phase 3...]
+
+You: "Found a bug in login flow"
+Claude: [Calls ./orchestrator run --intent bug-fix]
+        [Orchestrator executes Phase 10 failure handling → pause for fix]
 ```
 
 ## 💡 Core Features
@@ -116,13 +144,16 @@ Claude: [Calls ./orchestrator run --intent prd-change]
 | **AI-Collaborative Drafting** | Claude actively drafts PRD/architecture, you review |
 | **Script-Enforced Gates** | `sys.exit(1)` physical blocking, cannot skip steps |
 | **Compound Intent Recognition** | "Fixed bug and want to adjust requirements" — recognizes multiple intents, prioritizes and executes |
-| **Project Type Auto-Detection** | 5 types, test dimensions self-adapt |
+| **Project Type Auto-Detection** | 5 types (Web/CLI/Mobile/Data/Microservices), test dimensions self-adapt |
 | **Auto-Snapshot & Diff** | Auto-snapshot on validation, auto-diff on change |
 | **Velocity Tracking** | Estimated vs actual hours + ASCII trend charts |
 | **DoD Gate Extension** | lint/coverage/code review, warn or fail |
 | **ADR Management** | Architecture Decision Record full lifecycle |
 | **Risk Register** | Probability×impact matrix auto-rating |
 | **Sprint Review** | Auto-generates review materials on gate pass |
+| **Parallel Execution** | Independent phases run concurrently with topological sort |
+| **Conditional Branching** | Dynamic execution paths based on project type/conditions |
+| **Rollback** | Revert to any previous checkpoint with file snapshot restoration |
 
 ## 📖 Workflow
 
@@ -150,11 +181,24 @@ Phase 9: Execute Iterations → 4-layer gate validation
 Phase 10: Handle Changes → Graph traversal cascade update
 ```
 
-## 🛠️ Common Commands
+### Change Intent Paths
+
+| Intent | Phase Sequence |
+|--------|---------------|
+| `new-product` | Phase 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 |
+| `prd-change` | Phase 10 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 |
+| `arch-change` | Phase 10 → 5 → 6 → 7 → 8 → 9 |
+| `bug-fix` | Phase 10 → pause for fix |
+| `new-iteration` | Phase 8 → 9 |
+| `resume` | Continue from checkpoint |
+
+## 🛠️ Commands
+
+### Orchestrator Commands
 
 ```bash
 # Start orchestration
-./orchestrator run --intent new-product --user-input "我想做一个产品"
+./orchestrator run --intent new-product --user-input "I want to build a product"
 
 # Resume from paused state
 ./orchestrator resume --from-phase phase-2-draft-prd
@@ -164,9 +208,13 @@ Phase 10: Handle Changes → Graph traversal cascade update
 
 # Cancel workflow
 ./orchestrator cancel
+
+# Parallel execution (opt-in)
+ORCHESTRATOR_PARALLEL=1 ./orchestrator run --intent new-product --user-input "..."
 ```
 
-**Legacy Commands (Removed in v2.0)**:
+### Legacy Commands (Removed in v2.0)
+
 - ~~`python -m scripts init`~~ → Use `./orchestrator run --intent new-product`
 - ~~`python -m scripts validate`~~ → Orchestrator auto-validates
 - ~~`python -m scripts draft`~~ → Orchestrator auto-drafts
@@ -183,12 +231,14 @@ Docs/
 └── iterations/iter-N/      # Iteration plan + test records + Sprint Review
 
 .lifecycle/
-├── test_graph.json         # Test Knowledge Graph ⭐ v1.1.0
+├── checkpoint.json         # Phase-level state (v2.0+)
+├── notification.json       # Pause/failure notifications (v2.0+)
+├── test_graph.json         # Test Knowledge Graph
 ├── config.json             # Project configuration
 ├── dod.json                # DoD rules
 ├── risk_register.json      # Risk register
 ├── velocity.json           # Velocity tracking
-└── snapshots/              # Document snapshots
+└── snapshots/              # Document snapshots + rollback points
 ```
 
 ## 🎓 Model Compatibility
