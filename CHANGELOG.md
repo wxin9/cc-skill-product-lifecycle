@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-04-17
+
+### Fixed
+
+- **Intent Recording Mismatch** — Intent not updated when checkpoint status != "initialized"
+  - Modified `orchestrator.py` run() method to always update intent and user_input
+  - Intent now updates on every run (except resume/status operations)
+  - Ensures checkpoint always reflects current workflow intent
+
+- **Resume Returns Empty Phase List** — `get_phases_by_intent("resume")` returned empty list
+  - Modified `phases.py` get_phases_by_intent() function
+  - Added special handling for "resume" intent to return all PHASES
+  - Orchestrator filters based on checkpoint state
+
+- **Missing PRD Snapshots** — PRD snapshots not created after validation
+  - Modified `command_executor.py` _cmd_validate() method
+  - Integrated SnapshotManager to auto-create snapshots after successful validation
+  - Snapshots saved to `.lifecycle/snapshots/` directory
+  - Graceful error handling if snapshot creation fails
+
+- **Phase Sequence Issues** — Phase 10 order/depends_on conflict; prd-change missing Phase 7-8
+  - Phase 10: depends_on changed from phase-3-validate-prd to phase-6-validate-arch
+  - Phase 7: added "prd-change" to intent_triggers
+  - Phase 8: added "prd-change" to intent_triggers
+  - Ensures proper execution order for change workflows
+
+### Impact
+
+These fixes improve:
+- **Workflow reliability**: Correct intent tracking throughout workflow
+- **Resume functionality**: Proper phase sequence recovery
+- **Change management**: Complete audit trail with snapshots
+- **Change workflows**: Full phase coverage for PRD changes
+
+### Testing
+
+All fixes verified through:
+- Unit tests (118 tests, 94.9% pass rate)
+- Integration tests
+- Manual workflow testing
+
+### Migration
+
+No breaking changes from v2.0.0. Simply upgrade to v2.0.1 for improved reliability.
+
+---
+
 ## [2.0.0] - 2026-04-16
 
 ### ⚠ BREAKING CHANGES

@@ -1,5 +1,6 @@
 {
   "name": "product-lifecycle",
+  "version": "2.0.1",
   "tier": "stateful",
   "phases": [
     {
