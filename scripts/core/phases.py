@@ -70,7 +70,7 @@ PHASES: List[PhaseDefinition] = [
         "command": None,
         "command_args": None,
         "depends_on": [],
-        "blocks": ["phase-1-init", "phase-10-change"],
+        "blocks": ["phase-2-init", "phase-11-change"],
         "artifacts": [],
         "validation_type": None,
         "on_failure": "pause",
@@ -80,15 +80,37 @@ PHASES: List[PhaseDefinition] = [
         "intent_triggers": ["*"]
     },
     {
-        "id": "phase-1-init",
+        "id": "phase-1-analyze-solution",
+        "name": "实现方案分析",
+        "description": "分析需求、项目代码、业界方案，生成多个实现方案供用户选择",
+        "order": 1,
+        "auto": False,
+        "command": "analyze_solution",
+        "command_args": {"intent": "{intent}", "user_input": "{user_input}"},
+        "depends_on": ["phase-0-intent"],
+        "blocks": ["phase-2-init"],
+        "artifacts": [
+            {"path": ".lifecycle/solution.json", "min_bytes": 100, "required_headings": None, "required_substrings": None}
+        ],
+        "validation_type": None,
+        "on_failure": "pause",
+        "max_retries": 0,
+        "pause_for": "等待用户选择实现方案",
+        "timeout_hint": "建议在 1h 内完成方案选择",
+        "intent_triggers": ["*"],
+        "condition": None,
+        "branches": None
+    },
+    {
+        "id": "phase-2-init",
         "name": "项目初始化",
         "description": "创建文档结构、DoD 配置、Risk Register、ADR 目录",
-        "order": 1,
+        "order": 2,
         "auto": True,
         "command": "init",
         "command_args": {"name": "{project_name}"},
         "depends_on": [],
-        "blocks": ["phase-2-draft-prd"],
+        "blocks": ["phase-3-draft-prd"],
         "artifacts": [
             {"path": "Docs/INDEX.md", "min_bytes": 200, "required_headings": None, "required_substrings": None},
             {"path": ".lifecycle/config.json", "min_bytes": 100, "required_headings": None, "required_substrings": None},
@@ -103,15 +125,15 @@ PHASES: List[PhaseDefinition] = [
         "intent_triggers": ["new-product", "from-scratch"]
     },
     {
-        "id": "phase-2-draft-prd",
+        "id": "phase-3-draft-prd",
         "name": "AI 协作 PRD 起草",
         "description": "Claude 生成 PRD 草案，用户做审稿人",
-        "order": 2,
+        "order": 3,
         "auto": False,
         "command": "draft",
         "command_args": {"doc_type": "prd", "description": "{user_description}"},
-        "depends_on": ["phase-1-init"],
-        "blocks": ["phase-3-validate-prd"],
+        "depends_on": ["phase-2-init"],
+        "blocks": ["phase-4-validate-prd"],
         "artifacts": [
             {"path": "Docs/product/PRD.md", "min_bytes": 800, "required_headings": None, "required_substrings": None}
         ],
@@ -123,15 +145,15 @@ PHASES: List[PhaseDefinition] = [
         "intent_triggers": ["new-product", "new-feature", "prd-change"]
     },
     {
-        "id": "phase-3-validate-prd",
+        "id": "phase-4-validate-prd",
         "name": "PRD 验证 + 自动快照",
         "description": "验证 PRD 质量，通过后自动建快照",
-        "order": 3,
+        "order": 4,
         "auto": True,
         "command": "validate",
         "command_args": {"doc": "Docs/product/PRD.md", "type": "prd"},
-        "depends_on": ["phase-2-draft-prd"],
-        "blocks": ["phase-4-arch-interview"],
+        "depends_on": ["phase-3-draft-prd"],
+        "blocks": ["phase-5-arch-interview"],
         "artifacts": [
             {"path": ".lifecycle/snapshots/prd_latest.md", "min_bytes": 800, "required_headings": None, "required_substrings": None},
             {"path": ".lifecycle/steps/prd-score.json", "min_bytes": 30, "required_headings": None, "required_substrings": None}
@@ -144,15 +166,15 @@ PHASES: List[PhaseDefinition] = [
         "intent_triggers": ["new-product", "new-feature", "prd-change"]
     },
     {
-        "id": "phase-4-arch-interview",
+        "id": "phase-5-arch-interview",
         "name": "架构访谈 + 项目类型识别",
         "description": "与用户确认技术选型，自动识别项目类型",
-        "order": 4,
+        "order": 5,
         "auto": False,
         "command": None,
         "command_args": None,
-        "depends_on": ["phase-3-validate-prd"],
-        "blocks": ["phase-5-draft-arch"],
+        "depends_on": ["phase-4-validate-prd"],
+        "blocks": ["phase-6-draft-arch"],
         "artifacts": [
             {"path": ".lifecycle/arch_interview.json", "min_bytes": 100, "required_headings": None, "required_substrings": None},
             {"path": ".lifecycle/project_type.json", "min_bytes": 50, "required_headings": None, "required_substrings": None}
@@ -165,15 +187,15 @@ PHASES: List[PhaseDefinition] = [
         "intent_triggers": ["new-product", "arch-change"]
     },
     {
-        "id": "phase-5-draft-arch",
+        "id": "phase-6-draft-arch",
         "name": "AI 协作架构设计",
         "description": "Claude 生成架构草案（含 ADR 初稿）",
-        "order": 5,
+        "order": 6,
         "auto": False,
         "command": "draft",
         "command_args": {"doc_type": "arch"},
-        "depends_on": ["phase-4-arch-interview"],
-        "blocks": ["phase-6-validate-arch"],
+        "depends_on": ["phase-5-arch-interview"],
+        "blocks": ["phase-7-validate-arch"],
         "artifacts": [
             {"path": "Docs/tech/ARCH.md", "min_bytes": 800, "required_headings": None, "required_substrings": None}
         ],
@@ -185,15 +207,15 @@ PHASES: List[PhaseDefinition] = [
         "intent_triggers": ["new-product", "arch-change"]
     },
     {
-        "id": "phase-6-validate-arch",
+        "id": "phase-7-validate-arch",
         "name": "架构验证 + ADR 注册 + 快照",
         "description": "验证架构文档，检查至少 1 条 ADR accepted",
-        "order": 6,
+        "order": 7,
         "auto": True,
         "command": "validate",
         "command_args": {"doc": "Docs/tech/ARCH.md", "type": "arch"},
-        "depends_on": ["phase-5-draft-arch"],
-        "blocks": ["phase-7-test-outline"],
+        "depends_on": ["phase-6-draft-arch"],
+        "blocks": ["phase-8-test-outline"],
         "artifacts": [
             {"path": ".lifecycle/snapshots/arch_latest.md", "min_bytes": 800, "required_headings": None, "required_substrings": None},
             {"path": ".lifecycle/steps/arch-score.json", "min_bytes": 30, "required_headings": None, "required_substrings": None}
@@ -206,10 +228,10 @@ PHASES: List[PhaseDefinition] = [
         "intent_triggers": ["new-product", "arch-change"]
     },
     {
-        "id": "phase-7-test-outline",
+        "id": "phase-8-test-outline",
         "name": "自适应测试大纲生成",
         "description": "根据项目类型选择维度集，生成测试大纲 + test_graph.json",
-        "order": 7,
+        "order": 8,
         "auto": True,
         "command": "outline",
         "command_args": {
@@ -218,8 +240,8 @@ PHASES: List[PhaseDefinition] = [
             "arch": "Docs/tech/ARCH.md",
             "output": "Docs/tests/MASTER_OUTLINE.md"
         },
-        "depends_on": ["phase-6-validate-arch"],
-        "blocks": ["phase-8-iterations"],
+        "depends_on": ["phase-7-validate-arch"],
+        "blocks": ["phase-9-iterations"],
         "artifacts": [
             {"path": "Docs/tests/MASTER_OUTLINE.md", "min_bytes": 600, "required_headings": None, "required_substrings": None},
             {"path": ".lifecycle/test_graph.json", "min_bytes": 200, "required_headings": None, "required_substrings": None}
@@ -232,18 +254,18 @@ PHASES: List[PhaseDefinition] = [
         "intent_triggers": ["new-product", "test-change", "prd-change"]
     },
     {
-        "id": "phase-8-iterations",
+        "id": "phase-9-iterations",
         "name": "Velocity 感知迭代规划",
         "description": "生成迭代计划，设定工时估算",
-        "order": 8,
+        "order": 9,
         "auto": True,
         "command": "plan",
         "command_args": {
             "prd": "Docs/product/PRD.md",
             "arch": "Docs/tech/ARCH.md"
         },
-        "depends_on": ["phase-7-test-outline"],
-        "blocks": ["phase-9-iter-exec"],
+        "depends_on": ["phase-8-test-outline"],
+        "blocks": ["phase-10-iter-exec"],
         "artifacts": [
             {"path": "Docs/iterations/INDEX.md", "min_bytes": 200, "required_headings": None, "required_substrings": None},
             {"path": ".lifecycle/velocity.json", "min_bytes": 50, "required_headings": None, "required_substrings": None}
@@ -256,14 +278,14 @@ PHASES: List[PhaseDefinition] = [
         "intent_triggers": ["new-product", "new-iteration", "prd-change"]
     },
     {
-        "id": "phase-9-iter-exec",
+        "id": "phase-10-iter-exec",
         "name": "迭代执行循环",
         "description": "开发、测试、DoD 检查、门控验证",
-        "order": 9,
+        "order": 10,
         "auto": False,
         "command": "gate",
         "command_args": {"iteration": "{current_iteration}"},
-        "depends_on": ["phase-8-iterations"],
+        "depends_on": ["phase-9-iterations"],
         "blocks": [],
         "artifacts": [],
         "validation_type": None,
@@ -274,14 +296,14 @@ PHASES: List[PhaseDefinition] = [
         "intent_triggers": ["new-iteration", "continue-iter"]
     },
     {
-        "id": "phase-10-change",
+        "id": "phase-11-change",
         "name": "变更处理",
         "description": "处理 PRD/Code/Test 变更，级联影响分析",
-        "order": 10,
+        "order": 11,
         "auto": True,
         "command": "change",
         "command_args": {"change_type": "{change_type}"},
-        "depends_on": ["phase-6-validate-arch"],
+        "depends_on": ["phase-7-validate-arch"],
         "blocks": [],
         "artifacts": [
             {"path": ".lifecycle/CHANGE_IMPACT.md", "min_bytes": 100, "required_headings": None, "required_substrings": None}

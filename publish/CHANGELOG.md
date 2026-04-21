@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-04-21
+
+### Added
+
+- **Solution Analyzer** (`scripts/core/solution_analyzer.py`) — Implementation solution analyzer
+  - Analyzes project code structure, dependencies, and patterns
+  - Searches for industry best practices and solutions
+  - Generates multiple candidate solutions (conservative, balanced, innovative)
+  - Recommends optimal solution with reasoning
+  - Supports Web, CLI, microservices project types
+  - Detects Python, JavaScript, TypeScript, Go, Rust languages
+  - Identifies Flask, Django, React, Vue, Express frameworks
+
+- **Phase 1: Solution Analysis** — New phase before project initialization
+  - Phase ID: `phase-1-analyze-solution`
+  - Analyzes requirements and generates implementation solutions
+  - Creates `.lifecycle/solution.json` with solution recommendations
+  - User selects solution before proceeding to Phase 2
+  - Triggered by all intents (*)
+
+### Changed
+
+- **Phase Numbering Adjustment** — Phase 1-10 renumbered to Phase 1-11
+  - Phase 1: Solution Analysis (NEW)
+  - Phase 2: Project Initialization (was Phase 1)
+  - Phase 3: PRD Drafting (was Phase 2)
+  - Phase 4: PRD Validation (was Phase 3)
+  - Phase 5: Architecture Interview (was Phase 4)
+  - Phase 6: Architecture Design (was Phase 5)
+  - Phase 7: Architecture Validation (was Phase 6)
+  - Phase 8: Test Outline Generation (was Phase 7)
+  - Phase 9: Iteration Planning (was Phase 8)
+  - Phase 10: Iteration Execution (was Phase 9)
+  - Phase 11: Change Handling (was Phase 10)
+
+- **Checkpoint Version Upgrade** — v2.0 → v2.1
+  - Added `_migrate_checkpoint_version()` method for automatic version migration
+  - Automatically migrates v2.0 checkpoint (10 phases) to v2.1 (11 phases)
+  - Maps old Phase IDs to new Phase IDs (e.g., "phase-1-init" → "phase-2-init")
+  - Creates backup file (`.json.bak`) before migration
+  - Maintains backward compatibility
+
+- **Legacy Step Mapping Update** — Updated `_map_step_to_phase()` for v2.1
+  - All legacy step IDs now map to v2.1 Phase IDs
+  - Example: "project-initialized" → "phase-2-init" (was "phase-1-init")
+
+### Migration
+
+**Automatic Checkpoint Migration**: v2.0 checkpoints automatically migrate to v2.1 on first load.
+
+**Migration Process**:
+1. Backup created at `.lifecycle/checkpoint.json.bak`
+2. Phase IDs remapped to new numbering scheme
+3. Checkpoint version updated to "2.1"
+4. No user intervention required
+
+**Breaking Changes**: None. Checkpoint migration is transparent and backward compatible.
+
+---
+
 ## [2.0.1] - 2026-04-17
 
 ### Fixed

@@ -24,9 +24,9 @@ class TestParallelExecutor:
         # Check that all phases are in the graph
         assert len(executor.dependency_graph) == len(PHASES)
 
-        # Check specific dependencies
-        deps = executor.get_dependencies("phase-3-validate-prd")
-        assert "phase-2-draft-prd" in deps
+        # Check specific dependencies (v2.1 Phase IDs)
+        deps = executor.get_dependencies("phase-4-validate-prd")
+        assert "phase-3-draft-prd" in deps
 
     def test_topological_sort(self):
         """Test that topological sort identifies parallel groups."""
@@ -73,26 +73,26 @@ class TestParallelExecutor:
         """Test checking if phase can be executed."""
         executor = ParallelExecutor(PHASES)
 
-        # Phase with no dependencies should be parallelizable
-        assert executor.is_parallelizable("phase-1-init", set())
+        # Phase with no dependencies should be parallelizable (v2.1: phase-0-intent has no deps)
+        assert executor.is_parallelizable("phase-0-intent", set())
 
         # Phase with unmet dependencies should not be parallelizable
-        assert not executor.is_parallelizable("phase-3-validate-prd", set())
+        assert not executor.is_parallelizable("phase-4-validate-prd", set())
 
         # Phase with met dependencies should be parallelizable
-        assert executor.is_parallelizable("phase-3-validate-prd", {"phase-2-draft-prd"})
+        assert executor.is_parallelizable("phase-4-validate-prd", {"phase-3-draft-prd"})
 
     def test_get_ready_phases(self):
         """Test getting phases ready for execution."""
         executor = ParallelExecutor(PHASES)
 
-        # With no completed phases, should get phases with no dependencies
+        # With no completed phases, should get phases with no dependencies (v2.1: phase-0-intent)
         ready = executor.get_ready_phases(set())
-        assert "phase-1-init" in ready
+        assert "phase-0-intent" in ready
 
         # With some completed phases, should get next phases
-        ready = executor.get_ready_phases({"phase-1-init"})
-        # Should include phases that depend only on phase-1-init
+        ready = executor.get_ready_phases({"phase-0-intent"})
+        # Should include phases that depend only on phase-0-intent
 
 
 class TestConditionEvaluator:

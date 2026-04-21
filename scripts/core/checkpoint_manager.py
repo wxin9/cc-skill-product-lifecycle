@@ -72,6 +72,8 @@ class CheckpointManager:
             if self.checkpoint_file.exists():
                 try:
                     self._cache = json.loads(self.checkpoint_file.read_text(encoding="utf-8"))
+                    # v2.1: Migrate checkpoint version if needed
+                    self._cache = self._migrate_checkpoint_version(self._cache)
                     return self._cache
                 except (json.JSONDecodeError, OSError) as e:
                     # Corrupted checkpoint, try migration
@@ -389,10 +391,74 @@ class CheckpointManager:
                 elif item.is_dir():
                     shutil.copytree(item, lifecycle_dir / item.name)
 
+    def _migrate_checkpoint_version(self, checkpoint: dict) -> dict:
+        """
+        Migrate checkpoint from old version to new version.
+
+        v2.0 → v2.1: Migrate from 10-phase to 11-phase system (with phase-1-analyze-solution)
+        """
+        version = checkpoint.get("version", "2.0")
+
+        if version == "2.0":
+            # Backup original checkpoint
+            backup_file = self.checkpoint_file.with_suffix(".json.bak")
+            if not backup_file.exists():  # Don't overwrite existing backup
+                try:
+                    backup_file.write_text(
+                        json.dumps(checkpoint, ensure_ascii=False, indent=2),
+                        encoding="utf-8"
+                    )
+                    print(f"✓ Checkpoint backed up to {backup_file}")
+                except OSError as e:
+                    print(f"⚠ Failed to backup checkpoint: {e}")
+
+            # Migrate Phase IDs from v2.0 (10 phases) to v2.1 (11 phases)
+            phase_id_map = {
+                "phase-1-init": "phase-2-init",
+                "phase-2-draft-prd": "phase-3-draft-prd",
+                "phase-3-validate-prd": "phase-4-validate-prd",
+                "phase-4-arch-interview": "phase-5-arch-interview",
+                "phase-5-draft-arch": "phase-6-draft-arch",
+                "phase-6-validate-arch": "phase-7-validate-arch",
+                "phase-7-test-outline": "phase-8-test-outline",
+                "phase-8-iterations": "phase-9-iterations",
+                "phase-9-iter-exec": "phase-10-iter-exec",
+                "phase-10-change": "phase-11-change"
+            }
+
+            # Map completed phases
+            old_completed = checkpoint.get("completed_phases", [])
+            new_completed = []
+            for phase_id in old_completed:
+                new_phase_id = phase_id_map.get(phase_id, phase_id)
+                new_completed.append(new_phase_id)
+            checkpoint["completed_phases"] = new_completed
+
+            # Map current phase
+            old_current = checkpoint.get("current_phase")
+            if old_current:
+                checkpoint["current_phase"] = phase_id_map.get(old_current, old_current)
+
+            # Map phase_data keys
+            old_phase_data = checkpoint.get("phase_data", {})
+            new_phase_data = {}
+            for phase_id, data in old_phase_data.items():
+                new_phase_id = phase_id_map.get(phase_id, phase_id)
+                new_phase_data[new_phase_id] = data
+            checkpoint["phase_data"] = new_phase_data
+
+            # Update version
+            checkpoint["version"] = "2.1"
+
+            print(f"✓ Migrated checkpoint from v2.0 to v2.1 ({len(new_completed)} phases)")
+            self._dirty = True
+
+        return checkpoint
+
     def _create_empty(self) -> dict:
         """Create an empty checkpoint."""
         return {
-            "version": "2.0",
+            "version": "2.1",  # Updated to v2.1
             "project_name": "",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -444,19 +510,19 @@ class CheckpointManager:
         return checkpoint
 
     def _map_step_to_phase(self, step_id: str) -> Optional[str]:
-        """Map legacy step_id to new phase_id."""
+        """Map legacy step_id to new phase_id (v2.1 with 11 phases)."""
         mapping = {
-            "project-initialized": "phase-1-init",
-            "project-bootstrapped": "phase-1-init",
-            "prd-written": "phase-2-draft-prd",
-            "prd-drafted": "phase-2-draft-prd",
-            "prd-validated": "phase-3-validate-prd",
-            "arch-interview-done": "phase-4-arch-interview",
-            "arch-designed": "phase-5-draft-arch",
-            "arch-doc-written": "phase-5-draft-arch",
-            "arch-validated": "phase-6-validate-arch",
-            "test-outline-ready": "phase-7-test-outline",
-            "test-outline-written": "phase-7-test-outline",
-            "iterations-planned": "phase-8-iterations"
+            "project-initialized": "phase-2-init",  # Updated for v2.1
+            "project-bootstrapped": "phase-2-init",
+            "prd-written": "phase-3-draft-prd",
+            "prd-drafted": "phase-3-draft-prd",
+            "prd-validated": "phase-4-validate-prd",
+            "arch-interview-done": "phase-5-arch-interview",
+            "arch-designed": "phase-6-draft-arch",
+            "arch-doc-written": "phase-6-draft-arch",
+            "arch-validated": "phase-7-validate-arch",
+            "test-outline-ready": "phase-8-test-outline",
+            "test-outline-written": "phase-8-test-outline",
+            "iterations-planned": "phase-9-iterations"
         }
         return mapping.get(step_id)

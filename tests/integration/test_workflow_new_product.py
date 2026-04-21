@@ -40,7 +40,7 @@ class TestNewProductWorkflow:
 
         assert checkpoint["status"] == "paused"
         assert checkpoint["intent"] == "new-product"
-        assert "phase-1-init" in checkpoint["completed_phases"]
+        assert "phase-2-init" in checkpoint["completed_phases"]  # v2.1: was phase-1-init
 
     def test_orchestrator_pauses_at_interaction_point(self, tmp_path):
         """Test that orchestrator pauses at interaction points."""
@@ -57,7 +57,7 @@ class TestNewProductWorkflow:
 
         notification = json.loads(notification_file.read_text())
         assert notification["type"] == "pause_for_user"
-        assert "phase-2-draft-prd" in notification["phase_id"]
+        assert "phase-3-draft-prd" in notification["phase_id"]  # v2.1: was phase-2-draft-prd
 
     def test_orchestrator_resumes_from_pause(self, tmp_path):
         """Test that orchestrator can resume from pause point."""
@@ -68,7 +68,7 @@ class TestNewProductWorkflow:
         assert exit_code == 1  # paused
 
         # Resume should continue from current phase
-        exit_code = orch.run(intent="resume", from_phase="phase-2-draft-prd")
+        exit_code = orch.run(intent="resume", from_phase="phase-3-draft-prd")  # v2.1: was phase-2-draft-prd
 
         # Should pause again at next interaction point (Phase 4 or 5)
         # or complete if no more phases
@@ -83,11 +83,11 @@ class TestNewProductWorkflow:
         mgr = CheckpointManager(tmp_path)
         checkpoint = mgr.load()
 
-        # Phase 1 should be completed
-        assert "phase-1-init" in checkpoint["completed_phases"]
+        # Phase 2 (init) should be completed (v2.1: was phase-1-init)
+        assert "phase-2-init" in checkpoint["completed_phases"]
 
         # Phase data should exist
-        phase_data = checkpoint["phase_data"].get("phase-1-init", {})
+        phase_data = checkpoint["phase_data"].get("phase-2-init", {})
         assert "started_at" in phase_data
         assert "completed_at" in phase_data
 
@@ -170,7 +170,7 @@ class TestNewProductWorkflow:
 
         # Try to resume from a phase that has unmet dependencies
         # Should handle gracefully (may skip or fail)
-        exit_code = orch.run(intent="resume", from_phase="phase-3-validate-prd")
+        exit_code = orch.run(intent="resume", from_phase="phase-4-validate-prd")  # v2.1: was phase-3
 
         # Should handle gracefully (may succeed, pause, or fail)
         assert exit_code in [0, 1, 2]
@@ -213,13 +213,13 @@ class TestOrchestratorStateTransitions:
         mgr = CheckpointManager(tmp_path)
         checkpoint = mgr.init("test-project", "new-product", "test input")
 
-        # Mark all phases as completed
+        # Mark all phases as completed (v2.1 numbering)
         all_phases = [
-            "phase-0-intent", "phase-1-init", "phase-2-draft-prd",
-            "phase-3-validate-prd", "phase-4-arch-interview",
-            "phase-5-draft-arch", "phase-6-validate-arch",
-            "phase-7-test-outline", "phase-8-iterations",
-            "phase-9-iter-exec", "phase-10-change"
+            "phase-0-intent", "phase-1-analyze-solution", "phase-2-init",
+            "phase-3-draft-prd", "phase-4-validate-prd", "phase-5-arch-interview",
+            "phase-6-draft-arch", "phase-7-validate-arch",
+            "phase-8-test-outline", "phase-9-iterations",
+            "phase-10-iter-exec", "phase-11-change"
         ]
         checkpoint["completed_phases"] = all_phases
         checkpoint["status"] = "completed"
@@ -251,7 +251,7 @@ class TestOrchestratorWithCommandExecutor:
         # Create a checkpoint that points to a phase with invalid command
         mgr = CheckpointManager(tmp_path)
         checkpoint = mgr.init("test-project", "new-product", "test input")
-        checkpoint["current_phase"] = "phase-1-init"
+        checkpoint["current_phase"] = "phase-2-init"  # v2.1: was phase-1-init
         mgr.save(checkpoint, immediate=True)
 
         # Run should still succeed or pause gracefully

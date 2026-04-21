@@ -24,6 +24,13 @@
 
 ## ⭐ 新特性
 
+### v2.1.0 — 方案分析器 + Phase 重新编号
+
+- **方案分析器**：新增 Phase 1，分析需求、项目代码和业界方案，生成多个实现方案供用户选择
+- **Phase 1 新增**：在项目初始化之前新增实现方案分析阶段
+- **Phase 重新编号**：Phase 1-10 → Phase 1-11（Checkpoint 从 v2.0 自动迁移）
+- **Checkpoint v2.1**：从 v2.0 自动迁移，含备份和 Phase ID 重映射
+
 ### v2.0.1 — Checkpoint 跟踪改进
 
 - **Intent 始终记录**：Intent 和 user_input 现在每次运行时都会更新（不再仅限初始化）
@@ -94,11 +101,12 @@ cp -r cc-skill-product-lifecycle ~/.claude/skills/product-lifecycle
 ./orchestrator run --intent new-product --user-input "我想做一个任务管理工具"
 
 # Orchestrator 会：
-# 1. 执行 Phase 1（自动）— 创建文档结构
-# 2. 在 Phase 2 暂停 — 通知模型："等待 PRD 审核"
-# 3. 模型生成 PRD 草案
-# 4. 恢复：./orchestrator resume --from-phase phase-2-draft-prd
-# 5. 继续 Phase 3-9...
+# 1. 在 Phase 1 暂停 — 分析实现方案
+# 2. 执行 Phase 2（自动）— 创建文档结构
+# 3. 在 Phase 3 暂停 — 通知模型："等待 PRD 审核"
+# 4. 模型生成 PRD 草案
+# 5. 恢复：./orchestrator resume --from-phase phase-3-draft-prd
+# 6. 继续 Phase 4-10...
 ```
 
 **示例对话**：
@@ -106,18 +114,22 @@ cp -r cc-skill-product-lifecycle ~/.claude/skills/product-lifecycle
 ```
 你："我想做一个任务管理工具"
 Claude: [调用 ./orchestrator run --intent new-product]
-        [Orchestrator 在 Phase 2 暂停]
+        [Orchestrator 在 Phase 1 暂停]
+        [通知："等待用户选择实现方案"]
+        [Claude 分析需求，生成多个方案]
+        [调用 ./orchestrator resume --from-phase phase-1-analyze-solution]
+        [Orchestrator 在 Phase 3 暂停]
         [通知："等待 PRD 审核"]
         [Claude 生成 PRD 草案]
         [调用 ./orchestrator resume]
 
 你："需求变了，要加支付功能"
 Claude: [调用 ./orchestrator run --intent prd-change]
-        [Orchestrator 执行 Phase 10 → Phase 2 → Phase 3...]
+        [Orchestrator 执行 Phase 11 → Phase 3 → Phase 4...]
 
 你："登录流程发现 bug"
 Claude: [调用 ./orchestrator run --intent bug-fix]
-        [Orchestrator 执行 Phase 10 故障处理 → 暂停等待修复]
+        [Orchestrator 执行 Phase 11 故障处理 → 暂停等待修复]
 ```
 
 ## 💡 核心功能
@@ -143,36 +155,38 @@ Claude: [调用 ./orchestrator run --intent bug-fix]
 ```
 Phase 0: 意图识别
    ↓
-Phase 1: 项目初始化 → DoD/Risk/ADR 初始化
+Phase 1: 实现方案分析 → 分析需求、项目代码和业界方案
    ↓
-Phase 2: AI 起草 PRD → 你审核修改
+Phase 2: 项目初始化 → DoD/Risk/ADR 初始化
    ↓
-Phase 3: 验证 PRD → 自动快照
+Phase 3: AI 起草 PRD → 你审核修改
    ↓
-Phase 4: 架构访谈
+Phase 4: 验证 PRD → 自动快照
    ↓
-Phase 5: AI 起草架构 → 包含 ADR 初稿
+Phase 5: 架构访谈
    ↓
-Phase 6: 验证架构 → 自动快照
+Phase 6: AI 起草架构 → 包含 ADR 初稿
    ↓
-Phase 7: 生成测试图谱 + 自适应大纲
+Phase 7: 验证架构 → 自动快照
    ↓
-Phase 8: 规划迭代 → Velocity 估算
+Phase 8: 生成测试图谱 + 自适应大纲
    ↓
-Phase 9: 执行迭代 → 4 层门控验证
+Phase 9: 规划迭代 → Velocity 估算
    ↓
-Phase 10: 处理变更 → 图谱遍历级联更新
+Phase 10: 执行迭代 → 4 层门控验证
+   ↓
+Phase 11: 处理变更 → 图谱遍历级联更新
 ```
 
 ### 变更意图路径
 
 | 意图 | Phase 序列 |
 |------|-----------|
-| `new-product` | Phase 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 |
-| `prd-change` | Phase 10 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 |
-| `arch-change` | Phase 10 → 5 → 6 → 7 → 8 → 9 |
-| `bug-fix` | Phase 10 → 暂停等待修复 |
-| `new-iteration` | Phase 8 → 9 |
+| `new-product` | Phase 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 |
+| `prd-change` | Phase 11 → 3 → 4 → 5 → 6 → 7 → 8 → 9 |
+| `arch-change` | Phase 11 → 6 → 7 → 8 → 9 |
+| `bug-fix` | Phase 11 → 暂停等待修复 |
+| `new-iteration` | Phase 9 → 10 |
 | `resume` | 从 checkpoint 继续 |
 
 ## 🛠️ 命令
@@ -184,7 +198,7 @@ Phase 10: 处理变更 → 图谱遍历级联更新
 ./orchestrator run --intent new-product --user-input "我想做一个产品"
 
 # 从暂停状态恢复
-./orchestrator resume --from-phase phase-2-draft-prd
+./orchestrator resume --from-phase phase-3-draft-prd
 
 # 显示状态
 ./orchestrator status
@@ -214,7 +228,7 @@ Docs/
 └── iterations/iter-N/      # 迭代计划 + 测试记录 + Sprint Review
 
 .lifecycle/
-├── checkpoint.json         # Phase 级别状态 (v2.0+)
+├── checkpoint.json         # Phase 级别状态 (v2.1+)
 ├── notification.json       # 暂停/失败通知 (v2.0+)
 ├── test_graph.json         # 测试知识图谱
 ├── config.json             # 项目配置

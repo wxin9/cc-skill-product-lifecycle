@@ -24,6 +24,13 @@
 
 ## ⭐ What's New
 
+### v2.1.0 — Solution Analyzer + Phase Renumbering
+
+- **Solution Analyzer**: New Phase 1 analyzes requirements, project code, and industry solutions — generates multiple implementation options for user selection
+- **Phase 1 added**: Implementation solution analysis before project initialization
+- **Phase renumbering**: Phase 1-10 → Phase 1-11 (checkpoint auto-migrates from v2.0)
+- **Checkpoint v2.1**: Automatic migration from v2.0 with backup and Phase ID remapping
+
 ### v2.0.1 — Checkpoint Tracking Improvements
 
 - **Intent always recorded**: Intent and user_input now update on every run (not just initial)
@@ -94,11 +101,12 @@ After installation, use orchestrator commands:
 ./orchestrator run --intent new-product --user-input "I want to build a task manager"
 
 # Orchestrator will:
-# 1. Execute Phase 1 (auto) — Create doc structure
-# 2. Pause at Phase 2 — Notify model: "Waiting for PRD review"
-# 3. Model generates PRD draft
-# 4. Resume: ./orchestrator resume --from-phase phase-2-draft-prd
-# 5. Continue Phase 3-9...
+# 1. Pause at Phase 1 — Analyze solution options
+# 2. Execute Phase 2 (auto) — Create doc structure
+# 3. Pause at Phase 3 — Notify model: "Waiting for PRD review"
+# 4. Model generates PRD draft
+# 5. Resume: ./orchestrator resume --from-phase phase-3-draft-prd
+# 6. Continue Phase 4-10...
 ```
 
 **Example Conversation**:
@@ -106,18 +114,22 @@ After installation, use orchestrator commands:
 ```
 You: "I want to build a task manager"
 Claude: [Calls ./orchestrator run --intent new-product]
-        [Orchestrator pauses at Phase 2]
+        [Orchestrator pauses at Phase 1]
+        [Notification: "Waiting for solution selection"]
+        [Claude analyzes and presents solution options]
+        [Calls ./orchestrator resume --from-phase phase-1-analyze-solution]
+        [Orchestrator pauses at Phase 3]
         [Notification: "Waiting for PRD review"]
         [Claude generates PRD draft]
         [Calls ./orchestrator resume]
 
 You: "Requirements changed, need to add payment"
 Claude: [Calls ./orchestrator run --intent prd-change]
-        [Orchestrator executes Phase 10 → Phase 2 → Phase 3...]
+        [Orchestrator executes Phase 11 → Phase 3 → Phase 4...]
 
 You: "Found a bug in login flow"
 Claude: [Calls ./orchestrator run --intent bug-fix]
-        [Orchestrator executes Phase 10 failure handling → pause for fix]
+        [Orchestrator executes Phase 11 failure handling → pause for fix]
 ```
 
 ## 💡 Core Features
@@ -143,36 +155,38 @@ Claude: [Calls ./orchestrator run --intent bug-fix]
 ```
 Phase 0: Intent Recognition
    ↓
-Phase 1: Project Init → DoD/Risk/ADR setup
+Phase 1: Solution Analysis → Analyze requirements, code & industry solutions
    ↓
-Phase 2: AI Draft PRD → You review
+Phase 2: Project Init → DoD/Risk/ADR setup
    ↓
-Phase 3: Validate PRD → Auto-snapshot
+Phase 3: AI Draft PRD → You review
    ↓
-Phase 4: Architecture Interview
+Phase 4: Validate PRD → Auto-snapshot
    ↓
-Phase 5: AI Draft Architecture → Includes ADR draft
+Phase 5: Architecture Interview
    ↓
-Phase 6: Validate Architecture → Auto-snapshot
+Phase 6: AI Draft Architecture → Includes ADR draft
    ↓
-Phase 7: Generate Test Graph + Adaptive Outline
+Phase 7: Validate Architecture → Auto-snapshot
    ↓
-Phase 8: Plan Iterations → Velocity estimation
+Phase 8: Generate Test Graph + Adaptive Outline
    ↓
-Phase 9: Execute Iterations → 4-layer gate validation
+Phase 9: Plan Iterations → Velocity estimation
    ↓
-Phase 10: Handle Changes → Graph traversal cascade update
+Phase 10: Execute Iterations → 4-layer gate validation
+   ↓
+Phase 11: Handle Changes → Graph traversal cascade update
 ```
 
 ### Change Intent Paths
 
 | Intent | Phase Sequence |
 |--------|---------------|
-| `new-product` | Phase 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 |
-| `prd-change` | Phase 10 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 |
-| `arch-change` | Phase 10 → 5 → 6 → 7 → 8 → 9 |
-| `bug-fix` | Phase 10 → pause for fix |
-| `new-iteration` | Phase 8 → 9 |
+| `new-product` | Phase 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 |
+| `prd-change` | Phase 11 → 3 → 4 → 5 → 6 → 7 → 8 → 9 |
+| `arch-change` | Phase 11 → 6 → 7 → 8 → 9 |
+| `bug-fix` | Phase 11 → pause for fix |
+| `new-iteration` | Phase 9 → 10 |
 | `resume` | Continue from checkpoint |
 
 ## 🛠️ Commands
@@ -184,7 +198,7 @@ Phase 10: Handle Changes → Graph traversal cascade update
 ./orchestrator run --intent new-product --user-input "I want to build a product"
 
 # Resume from paused state
-./orchestrator resume --from-phase phase-2-draft-prd
+./orchestrator resume --from-phase phase-3-draft-prd
 
 # Show status
 ./orchestrator status
@@ -206,7 +220,7 @@ Docs/
 └── iterations/iter-N/      # Iteration plan + test records + Sprint Review
 
 .lifecycle/
-├── checkpoint.json         # Phase-level state (v2.0+)
+├── checkpoint.json         # Phase-level state (v2.1+)
 ├── notification.json       # Pause/failure notifications (v2.0+)
 ├── test_graph.json         # Test Knowledge Graph
 ├── config.json             # Project configuration

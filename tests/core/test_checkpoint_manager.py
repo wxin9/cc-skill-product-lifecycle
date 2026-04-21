@@ -193,8 +193,8 @@ class TestCheckpointManager:
         checkpoint = mgr.load()
 
         assert checkpoint["status"] == "migrated"
-        assert "phase-1-init" in checkpoint["completed_phases"]
-        assert checkpoint["phase_data"]["phase-1-init"]["migrated_from"] == "project-initialized"
+        assert "phase-2-init" in checkpoint["completed_phases"]  # v2.1: was phase-1-init
+        assert checkpoint["phase_data"]["phase-2-init"]["migrated_from"] == "project-initialized"
 
     def test_clear_notification(self, tmp_path):
         """Test that clear_notification() removes notification file."""
