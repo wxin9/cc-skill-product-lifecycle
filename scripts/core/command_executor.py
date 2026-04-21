@@ -512,6 +512,46 @@ This directory records architecture decisions for this project.
                 "error": str(e)
             }
 
+    def _cmd_analyze_solution(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        分析实现方案
+
+        Args:
+            args: {"intent": "bug-fix", "user_input": "修复登录失败"}
+
+        Returns:
+            {
+                "success": bool,
+                "message": str,
+                "data": {
+                    "project_context": {...},
+                    "industry_solutions": [...],
+                    "proposed_solutions": [...],
+                    "recommendation": str,
+                    "confidence": float
+                },
+                "error": str | None
+            }
+        """
+        from scripts.core.solution_analyzer import SolutionAnalyzer
+
+        intent = args.get("intent")
+        user_input = args.get("user_input")
+
+        analyzer = SolutionAnalyzer(self.root)
+        result = analyzer.analyze(intent, user_input)
+
+        # 保存结果到 .lifecycle/solution.json
+        solution_file = self.lifecycle_dir / "solution.json"
+        solution_file.write_text(json.dumps(result, indent=2, ensure_ascii=False))
+
+        return {
+            "success": True,
+            "message": "方案分析完成",
+            "data": result,
+            "error": None
+        }
+
     # -------------------------------------------------------------------------
     # Helper Methods
     # -------------------------------------------------------------------------
